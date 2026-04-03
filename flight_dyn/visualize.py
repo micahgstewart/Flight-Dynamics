@@ -1,6 +1,7 @@
 """Plotting: state history, controls, 3-D trajectory."""
 from __future__ import annotations
 
+import csv
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -9,7 +10,44 @@ import numpy as np
 from flight_dyn.simulation import SimResult
 
 
-def plot_result(res: SimResult, title: str, out_path: Path | None = None) -> None:
+def export_simresult_csv(res: SimResult, path: Path) -> None:
+    """Write time history: state (12) + controls to a CSV file."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    header = [
+        "t_s",
+        "pn_m",
+        "pe_m",
+        "pd_m",
+        "u_m_s",
+        "v_m_s",
+        "w_m_s",
+        "phi_rad",
+        "theta_rad",
+        "psi_rad",
+        "p_rad_s",
+        "q_rad_s",
+        "r_rad_s",
+        "delta_e_rad",
+        "delta_a_rad",
+        "delta_r_rad",
+        "throttle",
+    ]
+    with path.open("w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(header)
+        for k in range(len(res.t)):
+            row = [res.t[k]]
+            row.extend(float(v) for v in res.x[k])
+            row.append(float(res.controls["delta_e"][k]))
+            row.append(float(res.controls["delta_a"][k]))
+            row.append(float(res.controls["delta_r"][k]))
+            row.append(float(res.controls["throttle"][k]))
+            w.writerow(row)
+
+
+def make_result_figure(res: SimResult, title: str) -> plt.Figure:
+    """Build the standard 6-panel figure (altitude, angles, TAS, surfaces, throttle, 3D path)."""
     t = res.t
     x = res.x
     pn, pe, pd = x[:, 0], x[:, 1], x[:, 2]
@@ -61,6 +99,11 @@ def plot_result(res: SimResult, title: str, out_path: Path | None = None) -> Non
     ax6.set_title("Trajectory (NED origin)")
 
     plt.tight_layout()
+    return fig
+
+
+def plot_result(res: SimResult, title: str, out_path: Path | None = None) -> None:
+    fig = make_result_figure(res, title)
     if out_path:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(out_path, dpi=150)

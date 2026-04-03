@@ -77,7 +77,13 @@ python -m pip install -r requirements-demo.txt
 streamlit run demo_app.py
 ```
 
-This is for **exploration and demos**; batch results and figures still come from `main.py`.
+The UI is organized in **tabs**: **Summary & trim** (run settings, **equilibrium trim** at (V, h) before the pitch disturbance, and **end-of-run** state at the last time step — altitude error, θ/φ, α/β, TAS, h min/max), **Full dashboard** (same **6-panel** figure as `visualize.plot_result`), and **Saved files & downloads**. Each **Run simulation** writes a timestamped folder:
+
+`outputs/ui_runs/<YYYYMMDD_HHMMSS>/` containing `dashboard.png`, `state_history.csv`, and `run_meta.json`.
+
+This is for **exploration and demos**; batch results from `main.py` still go to `outputs/` (default filenames like `01_open_loop.png`).
+
+**How the UI differs from `main.py`:** the Streamlit app runs **one scenario** — **closed loop** only (autopilot on, recovery from an initial pitch disturbance at sliders for V, h, and gain scaling). It uses the default config file only. **`python main.py`** runs the **full suite**: trim printout, **open loop**, **closed loop**, **altitude step**, **mass sensitivity**, and writes **all** PNGs to `outputs/`. Same underlying simulation and control code; not the same set of cases.
 
 ## Project layout
 
@@ -93,7 +99,7 @@ This is for **exploration and demos**; batch results and figures still come from
 | `flight_dyn/validation.py` | Nonlinear trim (`scipy.optimize.least_squares`) |
 | `flight_dyn/experiments.py` | Open/closed loop, altitude step, mass sensitivity |
 | `flight_dyn/visualize.py` | Matplotlib figures |
-| `demo_app.py` | Optional Streamlit UI (sliders + plots) |
+| `demo_app.py` | Optional Streamlit UI (tabs, full dashboard, `outputs/ui_runs/…`) |
 | `tests/` | Pytest trim / EOM checks |
 
 ## Default aircraft configuration
