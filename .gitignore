@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.py[cod]
+.Python
+.venv/
+venv/
+.env
+
+# Generated figures (remove these lines if you want plots in the repo)
+outputs/

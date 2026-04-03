@@ -1,0 +1,34 @@
+{
+  "name": "F-16 class (nominal Stevens & Lewis / benchmark lineage)",
+  "references": [
+    "Stevens, B. L., Lewis, F. L., & Johnson, E. N. (2015). Aircraft Control and Simulation, 3rd ed. Wiley.",
+    "Heidlauf, P., et al. (2018). Verification Challenges in F-16 Ground Collision Avoidance. ARCH@ADHS.",
+    "Open benchmark implementations: AeroBenchVVPython, CSAF F-16 (used for cross-checking dynamical structure, not a government release)."
+  ],
+  "mass_kg": 9295.44,
+  "inertia_kgm2": { "Ixx": 12875.0, "Iyy": 75673.6, "Izz": 85552.1, "Ixz": 1331.4 },
+  "geometry": { "S_m2": 27.8709, "b_m": 9.144, "c_bar_m": 3.4508 },
+  "propulsion": { "T_max_N": 76200.0 },
+  "aero": {
+    "CL0": 0.052,
+    "CL_alpha_per_rad": 5.156,
+    "CD0": 0.024,
+    "K_induced": 0.0435,
+    "CY_beta_per_rad": -0.9759,
+
+    "Cl_beta_per_rad": -0.1023,
+    "Cl_p_per_rad": -0.4838,
+    "Cl_delta_a_per_rad": 0.18281,
+
+    "Cm0": 0.02,
+    "Cm_alpha_per_rad": -0.21657,
+    "Cm_q_per_rad": -18.922,
+    "Cm_delta_e_per_rad": -1.122,
+
+    "Cn_beta_per_rad": 0.15376,
+    "Cn_r_per_rad": -0.20811,
+    "Cn_delta_r_per_rad": -0.0648
+  },
+  "control_limits_deg": { "elevator": 25, "aileron": 21.5, "rudder": 30.0 },
+  "notes": "Geometry, inertia, and damping-style derivatives follow the Stevens & Lewis / F-16 verification model lineage cited above. CL0 was adjusted slightly from some published tables so wings-level trim at 213 m/s and 5 km matches the same nonlinear EOM used in simulation (residual <1e-8 on udot,wdot,qdot); this is standard when mixing a subset of coefficients into a reduced-order checkpoint model."
+}
