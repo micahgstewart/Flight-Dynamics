@@ -1,77 +1,102 @@
-# 6-DOF Nonlinear Jet Flight Dynamics & Control
+# Flight Dynamics — 6-DOF Nonlinear Simulation & Control
 
-Professional-scope **nonlinear six-degree-of-freedom** simulation of a **jet-like fixed-wing** aircraft with **multi-loop PID control**, built for flight dynamics and controls interview discussions.
+Nonlinear **six-degree-of-freedom** rigid-body simulation of a **jet-class** fixed-wing aircraft, with **multi-loop PID flight control**, trim validation, scripted experiments, and plotting.
+
+## Overview
+
+This repository integrates:
+
+- **Equations of motion** — full rigid-body translation and rotation (flat Earth, NED), including \(I_{xz}\) and gravity in body axes.
+- **Aerodynamics** — low-order stability-axis style coefficients (lift, drag, side force; rolling, pitching, yawing moments) with control deflections.
+- **Propulsion** — thrust along body \(+X\), proportional to throttle \([0,1]\).
+- **Atmosphere** — ISA troposphere density vs altitude for dynamic pressure.
+- **Control** — cascaded PID: altitude → pitch attitude → pitch rate → elevator; roll attitude → roll rate → aileron; yaw damper on yaw rate.
+- **Simulation** — fourth-order Runge–Kutta integration with configurable timestep.
+
+Default trim and experiment conditions use **213 m/s true airspeed** and **5000 m altitude** (subsonic cruise–class point appropriate for this reduced aero model).
 
 ## What is modeled
 
-- **State (12):** NED position \((p_N,p_E,p_D)\), body velocities \((u,v,w)\), Euler angles \((\phi,\theta,\psi)\), body angular rates \((p,q,r)\).
-- **Dynamics:** Full rigid-body kinematics and kinetics; gravity in body axes; inertia tensor including \(I_{xz}\); aerodynamic forces via wind-axis \(L,D,Y\) mapped to body; thrust along body \(+X\).
-- **Atmosphere:** ISA troposphere density for dynamic pressure vs altitude.
-- **Controls:** Cascaded loops — altitude → pitch attitude → pitch rate → elevator; roll attitude → roll rate → aileron; yaw damper on yaw rate; throttle held trim-like (constant in demos unless you extend it).
+| Component | Description |
+|-----------|-------------|
+| **State (12)** | NED position \((p_N,p_E,p_D)\), body velocities \((u,v,w)\), Euler angles \((\phi,\theta,\psi)\), body angular rates \((p,q,r)\). |
+| **Frames** | Flat Earth NED inertial; body axes \(+X\) forward, \(+Y\) right, \(+Z\) down. |
+| **Aero** | Angle of attack and sideslip from \((u,v,w)\); wind-axis \(L,D,Y\) mapped to body; moment coefficients with damping and surface terms. |
+| **Assumptions** | Still air (no wind or turbulence in the default experiments); ISA atmosphere; no flexible structure or fuel slosh. |
 
-## Reference aircraft (validation-oriented)
+**Scope:** The aircraft JSON uses **F-16–class** scales and coefficient *structure* aligned with textbook and benchmark literature (e.g. Stevens & Lewis–style tables). This is a **reduced-order academic / analysis model**, not a flight-test or program-of-record simulator.
 
-Default parameters live in `configs/f16_stevens_nominal.json`. They follow the **F-16-class modeling tradition** used in:
+## Requirements
 
-- Stevens, B. L., Lewis, F. L., & Johnson, E. N. (2015). *Aircraft Control and Simulation*, 3rd ed. Wiley.
-- Heidlauf, P., et al. (2018). *Verification Challenges in F-16 Ground Collision Avoidance and Other Automated Maneuvers*, ARCH@ADHS.
+- Python ≥ 3.10  
+- Dependencies: `numpy`, `matplotlib`, `scipy` (see `requirements.txt`)
 
-Open benchmark codebases (e.g. AeroBenchVVPython / CSAF) use the same **structural** idea: nonlinear rigid body + low-order aerodynamics for algorithm testing. **This repository is independent code**; it is **not** a government release and **not** claiming flight-test accuracy.
+## Install and run
 
-### How we validate
-
-1. **Trim consistency:** `flight_dyn/validation.py` solves for \((\alpha,\delta_e,\text{throttle})\) so that, at fixed true airspeed and altitude, \(\dot u\), \(\dot w\), and \(\dot q\) from the **same** `state_derivative` used in simulation are near zero (see `python main.py --trim-only`).
-2. **Order-of-magnitude check:** Trim angle of attack should sit in a **plausible** range for high-speed cruise; exact degrees will not match a handbook unless **all** coefficients and compressibility effects are carried over from a specific report.
-3. **Controlled vs uncontrolled:** Experiments show **open-loop divergence** after a pitch upset vs **closed-loop recovery** with the autopilot — the clearest “model + control” interview figure.
-
-The README in the config notes why **`CL0`** was nudged: published tables are often tied to a **full** aero model; a **reduced** 6-DOF checkpoint must have a **self-consistent** baseline lift at trim.
-
-## Project layout
-
-| File / folder        | Role |
-|----------------------|------|
-| `flight_dyn/aircraft.py` | Parameters, `Aircraft.from_json()`, aero & thrust force/moment |
-| `flight_dyn/atmosphere.py` | ISA \(\rho(h)\) |
-| `flight_dyn/dynamics.py` | Equations of motion |
-| `flight_dyn/controls.py` | PID + multi-loop `FlightControlSystem` |
-| `flight_dyn/simulation.py` | RK4 + `run_simulation()` |
-| `flight_dyn/validation.py` | Trim solve (nonlinear least squares) |
-| `flight_dyn/experiments.py` | Mandated scenarios |
-| `flight_dyn/visualize.py` | Matplotlib + 3D trajectory |
-| `configs/*.json`     | Swap vehicle without changing equations |
-| `main.py`            | Entry point |
-| `outputs/`           | Generated figures (after run) |
-
-## Install & run
+From the repository root:
 
 ```bash
-cd "Flight Dynamics"
 python -m pip install -r requirements.txt
 python main.py
 ```
 
-- **Trim only (quick validation):** `python main.py --trim-only`
+- **Full run:** prints trim information, runs all experiments, writes figures under `outputs/`.
+- **Trim only** (fast check, no plots):
 
-Figures are written to `outputs/`, including `00_open_vs_closed_alt_pitch.png`.
+  ```bash
+  python main.py --trim-only
+  ```
 
-## Experiments (mandated set)
+Generated plots include altitude, pitch/roll, airspeed, control surfaces, throttle, and a 3D trajectory. `outputs/` is listed in `.gitignore` by default so generated PNGs are not committed; remove that entry if you want figures in version control.
 
-1. **Open-loop:** Trim state + **+2° pitch**; controls fixed at trim throttle, zero surfaces → **divergent / diverging-oscillatory** longitudinal motion.
-2. **Closed-loop:** Same IC with FCS **ON** → recovery toward commanded altitude.
-3. **Altitude step:** **+200 m** command at \(t = 10\) s → transient for rise/overshoot/settling discussion.
-4. **Mass sensitivity:** **+15% mass**, same gains → different damping / phugoid-like behavior (may need retuning in a real program).
+## Project layout
 
-## Interview talking points
+| Path | Role |
+|------|------|
+| `main.py` | Entry point: load config, trim report, experiments, visualization |
+| `configs/*.json` | Aircraft parameters (mass, inertia, geometry, aero, limits) |
+| `flight_dyn/aircraft.py` | `Aircraft` model, aerodynamic and thrust forces/moments |
+| `flight_dyn/atmosphere.py` | ISA troposphere \(\rho(h)\) |
+| `flight_dyn/dynamics.py` | `state_derivative` — full 6-DOF EOM |
+| `flight_dyn/controls.py` | PID blocks and `FlightControlSystem` |
+| `flight_dyn/simulation.py` | RK4 step and `run_simulation()` |
+| `flight_dyn/validation.py` | Nonlinear trim (`scipy.optimize.least_squares`) |
+| `flight_dyn/experiments.py` | Open/closed loop, altitude step, mass sensitivity |
+| `flight_dyn/visualize.py` | Matplotlib figures |
 
-- **6-DOF vs 2-D:** Full translation + rotation; Euler kinematics (gimbal risk at \(\theta\rightarrow\pm90^\circ\) noted in code comments if you extend).
-- **Where CFD fits:** High-fidelity solvers usually produce **tables or derivatives** that **populate** this model; coupling CFD inside the time loop is a different (heavy) workflow.
-- **Any aircraft:** Change `configs/your_jet.json` — same code path.
+## Default aircraft configuration
 
-## Authoring another aircraft
+`configs/f16_stevens_nominal.json` holds the default vehicle. References cited in that file include *Aircraft Control and Simulation* (Stevens & Lewis, 3rd ed.) and F-16 verification-style literature. **This codebase is independent** of any government or vendor release.
 
-Copy `configs/f16_stevens_nominal.json`, edit mass, geometry, inertias, `aero` block, and limits. Run `main.py --trim-only` to see if trim is physically plausible; adjust `CL0` / `Cm0` / thrust if trim hits bounds.
+The JSON **notes** field explains that **`CL0`** was adjusted slightly so that wings-level trim at the default \((V,h)\) is **self-consistent** with the same nonlinear equations used in time integration—common when porting a subset of coefficients into a reduced model.
 
-## Requirements
+## Validation and experiments
 
-- Python ≥ 3.10
-- `numpy`, `matplotlib`, `scipy` (for `least_squares` trim)
+**Trim** solves for \((\alpha, \delta_e, \text{throttle})\) at fixed TAS and altitude so that the trim residual from the **same** `state_derivative` used in the simulator is negligible. Use `python main.py --trim-only` to print trim \(\alpha\), elevator, throttle, and residual norm.
+
+**Experiments** (no atmospheric turbulence; deterministic initial conditions and commands):
+
+1. **Open loop** — Trim-like initial state with an extra **+2° pitch**; control surfaces fixed at zero, throttle at trim. Shows **uncontrolled** longitudinal response after an initial attitude offset.
+2. **Closed loop** — Same initial offset with the **flight control system** enabled and altitude commanded to the trim altitude. Shows **recovery** toward the commanded state.
+3. **Altitude step** — Level trim start; at \(t = 10\,\text{s}\), altitude command increases by **200 m**. Shows **outer-loop** tracking and transient behavior.
+4. **Mass sensitivity** — **+15%** mass with identical controller gains and a small pitch perturbation. Illustrates **sensitivity** to parameter changes without retuning.
+
+Together, these cases contrast **plant behavior** vs **closed-loop behavior**, command tracking, and a simple robustness check.
+
+## Adding or changing an aircraft
+
+1. Copy `configs/f16_stevens_nominal.json` to a new file.  
+2. Edit mass, geometry, inertias, `aero` coefficients, and `control_limits_deg`.  
+3. Point `main.py` at your JSON (or load it in your own driver).  
+4. Run `python main.py --trim-only` and confirm trim \(\alpha\), surfaces, and throttle are **within bounds** and **physically plausible**; adjust `CL0`, `Cm0`, or thrust-related inputs if trim sits on limits.
+
+## Limitations (read before interpreting results)
+
+- **Low-order aero** — Valid for small-to-moderate perturbations around a trim point; not a full transonic/supersonic database.  
+- **Simple engine** — Throttle × \(T_{\max}\); no spool dynamics or altitude–Mach thrust tables.  
+- **No wind, gusts, or sensor noise** unless you extend the code.  
+- **Euler angles** — Kinematic singularity near \(\theta = \pm 90^\circ\); not intended for extreme attitudes without modification.
+
+## License
+
+Add a `LICENSE` file if you distribute or reuse this project publicly.
