@@ -21,18 +21,55 @@ def _trim_throttle(ac: Aircraft, V: float, h: float) -> float:
     return float(find_trim(ac, V, h)["throttle"])
 
 
+def run_open_loop_demo(
+    ac: Aircraft,
+    V_m_s: float = 213.0,
+    h_m: float = 5000.0,
+    pitch_disturb_deg: float = 2.0,
+    t_final: float = 40.0,
+    dt: float = 0.02,
+) -> SimResult:
+    """
+    Trim at (V, h), perturb pitch, surfaces fixed at zero, throttle at trim.
+    Used by batch experiments and the optional Streamlit demo.
+    """
+    trim = find_trim(ac, V_m_s, h_m)
+    x0 = trim["x_trim"].copy()
+    x0[7] += np.radians(pitch_disturb_deg)
+    thr0 = float(trim["throttle"])
+    return run_simulation(
+        ac, x0, t_final, dt, fcs=None, u_constant=(0.0, 0.0, 0.0, thr0)
+    )
+
+
+def run_closed_loop_demo(
+    ac: Aircraft,
+    V_m_s: float = 213.0,
+    h_m: float = 5000.0,
+    pitch_disturb_deg: float = 2.0,
+    t_final: float = 60.0,
+    dt: float = 0.02,
+    fcs: FlightControlSystem | None = None,
+) -> SimResult:
+    """Same initial upset as open loop; multi-loop FCS on unless fcs.control_on is False."""
+    x0 = _initial_trim_state(ac, V_m_s, h_m)
+    x0[7] += np.radians(pitch_disturb_deg)
+    if fcs is None:
+        fcs = FlightControlSystem()
+    fcs.control_on = True
+    fcs.alt_cmd_m = h_m
+    fcs.throttle = _trim_throttle(ac, V_m_s, h_m)
+    return run_simulation(ac, x0, t_final, dt, fcs=fcs)
+
+
 def experiment_open_loop_instability(
     ac: Aircraft, out_dir: Path, t_final: float = 40.0, dt: float = 0.02
 ):
     """
     Open loop: small pitch disturbance grows (longitudinal divergence / oscillation).
     """
-    trim = find_trim(ac, 213.0, 5000.0)
-    x0 = trim["x_trim"].copy()
-    x0[7] += np.radians(2.0)  # theta +2 deg perturbation
-    thr0 = float(trim["throttle"])
-    res = run_simulation(
-        ac, x0, t_final, dt, fcs=None, u_constant=(0.0, 0.0, 0.0, thr0)
+    res = run_open_loop_demo(
+        ac, 213.0, 5000.0, pitch_disturb_deg=2.0, t_final=t_final, dt=dt
     )
     res.meta = {
         "name": "open_loop_disturbance",
@@ -45,13 +82,9 @@ def experiment_closed_loop_recovery(
     ac: Aircraft, out_dir: Path, t_final: float = 60.0, dt: float = 0.02
 ):
     """Closed loop: same initial disturbance, autopilot regains altitude."""
-    x0 = _initial_trim_state(ac, 213.0, 5000.0)
-    x0[7] += np.radians(2.0)
-    fcs = FlightControlSystem()
-    fcs.control_on = True
-    fcs.alt_cmd_m = 5000.0
-    fcs.throttle = _trim_throttle(ac, 213.0, 5000.0)
-    res = run_simulation(ac, x0, t_final, dt, fcs=fcs)
+    res = run_closed_loop_demo(
+        ac, 213.0, 5000.0, pitch_disturb_deg=2.0, t_final=t_final, dt=dt
+    )
     res.meta = {"name": "closed_loop_recovery", "description": "Multi-loop FCS ON."}
     return res
 

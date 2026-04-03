@@ -29,7 +29,7 @@ Default trim and experiment conditions use **213 m/s true airspeed** and **5000 
 ## Requirements
 
 - Python ≥ 3.10  
-- Dependencies: `numpy`, `matplotlib`, `scipy` (see `requirements.txt`)
+- Core: `numpy`, `matplotlib`, `scipy`, `pytest` (see `requirements.txt`)
 
 ## Install and run
 
@@ -47,7 +47,37 @@ python main.py
   python main.py --trim-only
   ```
 
+**CLI options** (all optional):
+
+| Flag | Meaning |
+|------|---------|
+| `--config PATH` | Aircraft JSON (default: `configs/f16_stevens_nominal.json`) |
+| `--output-dir PATH` | Where to write PNGs (default: `outputs`) |
+| `--tas FLOAT` | True airspeed (m/s) for the trim printout |
+| `--altitude FLOAT` | Altitude (m) for the trim printout |
+
+Example: `python main.py --config configs/f16_stevens_nominal.json --output-dir ./out --tas 213 --altitude 5000`
+
 Generated plots include altitude, pitch/roll, airspeed, control surfaces, throttle, and a 3D trajectory. `outputs/` is listed in `.gitignore` by default so generated PNGs are not committed; remove that entry if you want figures in version control.
+
+## Tests
+
+```bash
+python -m pytest tests -q
+```
+
+Checks that trim produces near-zero longitudinal accelerations (same definition as the trim solver).
+
+## Interactive demo (optional)
+
+Install Streamlit and run the browser UI (sliders for speed, altitude, pitch disturbance, gain scaling):
+
+```bash
+python -m pip install -r requirements-demo.txt
+streamlit run demo_app.py
+```
+
+This is for **exploration and demos**; batch results and figures still come from `main.py`.
 
 ## Project layout
 
@@ -63,6 +93,8 @@ Generated plots include altitude, pitch/roll, airspeed, control surfaces, thrott
 | `flight_dyn/validation.py` | Nonlinear trim (`scipy.optimize.least_squares`) |
 | `flight_dyn/experiments.py` | Open/closed loop, altitude step, mass sensitivity |
 | `flight_dyn/visualize.py` | Matplotlib figures |
+| `demo_app.py` | Optional Streamlit UI (sliders + plots) |
+| `tests/` | Pytest trim / EOM checks |
 
 ## Default aircraft configuration
 

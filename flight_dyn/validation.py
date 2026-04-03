@@ -35,7 +35,8 @@ def trim_residual(
         pqr=np.zeros(3),
     )
     xd = state_derivative(x, ac, delta_e, 0.0, 0.0, throttle)
-    return np.array([xd[3], xd[4], xd[11]], dtype=float)
+    # Longitudinal symmetric trim: u_dot, w_dot, q_dot (indices 3,5,10 in xdot)
+    return np.array([xd[3], xd[5], xd[10]], dtype=float)
 
 
 def find_trim(
@@ -79,7 +80,7 @@ def find_trim(
         "delta_e_deg": np.degrees(de),
         "throttle": thr,
         "residual_norm": float(np.linalg.norm(res.fun)),
-        "xdot_uvw_q": xd[[3, 4, 11]],
+        "xdot_u_w_q": xd[[3, 5, 10]],
         "x_trim": x_trim,
         "message": res.message,
     }
